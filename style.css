@@ -1,0 +1,106 @@
+/* Grundlayout und Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background: #f4f4f4;
+  color: #333;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+nav {
+  margin-top: 10px;
+}
+
+nav button {
+  padding: 10px 20px;
+  margin: 0 5px;
+  border: none;
+  background: #007BFF;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+nav button:hover {
+  background: #0056b3;
+}
+
+/* Grid-Dashboard */
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.day-tile {
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  min-height: 150px;
+}
+
+/* Aufgaben Kacheln */
+.task {
+  background: #e0e0e0;
+  margin: 5px 0;
+  padding: 5px;
+  border-radius: 4px;
+  cursor: move;
+}
+
+/* Ablage / Dropzone */
+#taskStorage {
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.dropzone {
+  min-height: 100px;
+  border: 2px dashed #ccc;
+  padding: 10px;
+}
+
+/* Modal-Stile */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  position: relative;
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 1.5em;
+  cursor: pointer;
+}
