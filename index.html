@@ -198,7 +198,7 @@
       background-color: #b3d4fc;
     }
 
-    /* Struktur für mehrzeilige Inhalte */
+    /* Struktur fÃ¼r mehrzeilige Inhalte */
     .event-time,
     .task-time {
       font-weight: 600;
@@ -306,15 +306,15 @@
   <main>
     <section id="sidebar" style="display:none;">
       <h2>Aufgabenablage</h2>
-      <button id="add-task-btn">Aufgabe hinzufügen</button>
+      <button id="add-task-btn">Aufgabe hinzufÃ¼gen</button>
       <div id="task-list" ondragover="allowDrop(event)" ondrop="drop(event, null)"></div>
     </section>
 
     <section id="week-container" style="display:none;">
       <nav id="week-nav">
-        <button id="prev-week">← Vorwoche</button>
+        <button id="prev-week">â† Vorwoche</button>
         <div id="week-label"></div>
-        <button id="next-week">Nächste Woche →</button>
+        <button id="next-week">NÃ¤chste Woche â†’</button>
       </nav>
       <div id="days"></div>
     </section>
@@ -326,15 +326,15 @@
         <input type="email" id="email" required />
         <label for="password">Passwort</label>
         <input type="password" id="password" required />
-        <button type="submit">Anmelden</button>
+        <button type="submit">Anmelden / Registrieren</button>
       </form>
       <p id="login-error" style="color:red;"></p>
     </section>
   </main>
-  <!-- Modal für Aufgaben-Detail -->
+  <!-- Modal fÃ¼r Aufgaben-Detail -->
   <div id="task-modal">
     <div class="modal-content">
-      <h3>Aufgabe hinzufügen / bearbeiten</h3>
+      <h3>Aufgabe hinzufÃ¼gen / bearbeiten</h3>
       <form id="task-detail-form">
         <input type="hidden" id="task-id" />
         <label for="modal-task-title">Titel</label>
@@ -437,11 +437,7 @@
         return d.toISOString().split('T')[0];
       }
       function formatDayName(d) {
-        return d.toLocaleDateString('de-DE', {
-          weekday: 'short',
-          day: 'numeric',
-          month: 'numeric'
-        });
+        return d.toLocaleDateString('de-DE', {weekday: 'short', day: 'numeric', month: 'numeric'});
       }
 
       // Firebase Auth State
@@ -477,16 +473,16 @@
         try {
           await auth.signInWithEmailAndPassword(email, password);
         } catch (err) {
-          loginError.textContent = err.message;
-          // if (err.code === 'auth/user-not-found') {
-          //   try {
-          //     await auth.createUserWithEmailAndPassword(email, password);
-          //   } catch (regErr) {
-          //     loginError.textContent = regErr.message;
-          //   }
-          // } else {
-          //   loginError.textContent = err.message;
-          // }
+          if (err.code === 'auth/user-not-found') {
+            // try {
+            //   await auth.createUserWithEmailAndPassword(email, password);
+            // } catch (regErr) {
+            //   loginError.textContent = regErr.message;
+            // }
+            loginError.textContent = "Benutzer nicht gefunden. Registrierung deaktiviert.";
+          } else {
+            loginError.textContent = err.message;
+          }
         }
       });
 
@@ -588,7 +584,7 @@
           tasksAmTag.forEach(task => {
             const taskCard = document.createElement('div');
             taskCard.className = 'task-card day';
-            taskCard.draggable = false; // Deaktiviert Dragging für Aufgaben im Wochenplan
+            taskCard.draggable = false; // Deaktiviert Dragging fÃ¼r Aufgaben im Wochenplan
             taskCard.dataset.taskId = task.id;
             taskCard.innerHTML = `
               <div class="task-time">${task.startTime}</div>
@@ -628,7 +624,7 @@
             ladeTasks();
           }
         } else {
-          // Aufgabe zurück in die Taskliste
+          // Aufgabe zurÃ¼ck in die Taskliste
           const task = tasks.find(t => t.id === taskId);
           if (task) {
             task.date = null;
@@ -670,7 +666,7 @@
             document.getElementById('modal-task-start-time').value = task.startTime;
             document.getElementById('modal-task-duration').value = task.duration;
             document.getElementById('modal-task-desc').value = task.desc || '';
-            // Checkboxen für Wiederholungstage setzen
+            // Checkboxen fÃ¼r Wiederholungstage setzen
             const repeatDays = task.repeatDays || [];
             document.querySelectorAll('#modal-repeat-days input[type="checkbox"]').forEach(checkbox => {
               checkbox.checked = repeatDays.includes(parseInt(checkbox.value));
@@ -685,7 +681,7 @@
           document.getElementById('modal-task-start-time').value = '12:00';
           document.getElementById('modal-task-duration').value = '60';
           document.getElementById('modal-task-desc').value = '';
-          // Alle Checkboxen für Wiederholungstage entfernen
+          // Alle Checkboxen fÃ¼r Wiederholungstage entfernen
           document.querySelectorAll('#modal-repeat-days input[type="checkbox"]').forEach(checkbox => {
             checkbox.checked = false;
           });
@@ -710,7 +706,7 @@
         const desc = document.getElementById('modal-task-desc').value;
 
         // Wiederholungstage sammeln
-        const repeatDays = Array.from(document.querySelectorAll('#modal-repeat-days input[type="checkbox"]:checked"))
+        const repeatDays = Array.from(document.querySelectorAll('#modal-repeat-days input[type="checkbox"]:checked'))
           .map(checkbox => parseInt(checkbox.value));
 
         const task = {
