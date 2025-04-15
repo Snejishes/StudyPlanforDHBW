@@ -326,12 +326,11 @@
         <input type="email" id="email" required />
         <label for="password">Passwort</label>
         <input type="password" id="password" required />
-        <button type="submit">Anmelden / Registrieren</button>
+        <button type="submit">Anmelden</button>
       </form>
       <p id="login-error" style="color:red;"></p>
     </section>
   </main>
-
   <!-- Modal für Aufgaben-Detail -->
   <div id="task-modal">
     <div class="modal-content">
@@ -438,7 +437,11 @@
         return d.toISOString().split('T')[0];
       }
       function formatDayName(d) {
-        return d.toLocaleDateString('de-DE', {weekday: 'short', day: 'numeric', month: 'numeric'});
+        return d.toLocaleDateString('de-DE', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'numeric'
+        });
       }
 
       // Firebase Auth State
@@ -474,15 +477,16 @@
         try {
           await auth.signInWithEmailAndPassword(email, password);
         } catch (err) {
-          if (err.code === 'auth/user-not-found') {
-            try {
-              await auth.createUserWithEmailAndPassword(email, password);
-            } catch (regErr) {
-              loginError.textContent = regErr.message;
-            }
-          } else {
-            loginError.textContent = err.message;
-          }
+          loginError.textContent = err.message;
+          // if (err.code === 'auth/user-not-found') {
+          //   try {
+          //     await auth.createUserWithEmailAndPassword(email, password);
+          //   } catch (regErr) {
+          //     loginError.textContent = regErr.message;
+          //   }
+          // } else {
+          //   loginError.textContent = err.message;
+          // }
         }
       });
 
@@ -560,242 +564,192 @@
           // Vorlesungen anzeigen
           const eventsDiv = document.createElement('div');
           eventsDiv.className = 'events';
-          const events = getVorlesungenForDate(dayDate);
-          events.forEach(ev => {
-            const evCard = createEventCard(ev);
-            eventsDiv.appendChild(evCard);
+          const vorlesungenAmTag = vorlesungenJSON.filter(v => v.date === dayISO);
+          vorlesungenAmTag.forEach(vorlesung => {
+            const eventCard = document.createElement('div');
+            eventCard.className = 'event-card';
+            eventCard.innerHTML = `
+              <div class="event-time">${vorlesung.time}</div>
+              <div class="event-title">${vorlesung.title}</div>
+              <div class="event-room">${vorlesung.room}</div>
+            `;
+            eventsDiv.appendChild(eventCard);
           });
           dayTile.appendChild(eventsDiv);
 
-          // Aufgaben anzeigen, sortiert nach Startzeit
+          // Tasks anzeigen
           const tasksDiv = document.createElement('div');
           tasksDiv.className = 'tasks';
-          const dayTasks = getTasksForDate(dayISO).sort((a, b) => {
-            if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
-            if (a.startTime) return -1;
-            if (b.startTime) return 1;
-            return 0;
+          const tasksAmTag = tasks.filter(task => {
+            if (task.date === dayISO) return true;
+            if (task.repeatDays && task.repeatDays.includes(dayDate.getDay())) return true;
+            return false;
           });
-          dayTasks.forEach(task => {
-            const taskCard = createTaskCard(task, true);
+          tasksAmTag.forEach(task => {
+            const taskCard = document.createElement('div');
+            taskCard.className = 'task-card day';
+            taskCard.draggable = false; // Deaktiviert Dragging für Aufgaben im Wochenplan
+            taskCard.dataset.taskId = task.id;
+            taskCard.innerHTML = `
+              <div class="task-time">${task.startTime}</div>
+              <div class="task-title">${task.title}</div>
+              <div class="task-type">${task.type}</div>
+            `;
             tasksDiv.appendChild(taskCard);
           });
           dayTile.appendChild(tasksDiv);
 
           daysContainer.appendChild(dayTile);
         }
-        renderTaskSidebar();
       }
 
-      function getVorlesungenForDate(date) {
-        const weekday = date.toLocaleDateString('de-DE', {weekday: 'short'});
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const formatted = `${weekday}, ${day}.${month}.`;
-        return vorlesungenJSON.filter(v => v.date === formatted);
-      }
-
-      function getTasksForDate(dateISO) {
-        const d = new Date(dateISO);
-        return tasks.filter(task => {
-          if (task.repeatDays && task.repeatDays.length > 0) {
-            return task.repeatDays.includes(d.getDay());
-          }
-          return task.date === dateISO;
-        });
-      }
-
-      function getUnassignedTasks() {
-        return tasks.filter(t => !t.date);
-      }
-
-      // Mehrzeilige Event-Karte
-      function createEventCard(ev) {
-        const card = document.createElement('div');
-        card.className = 'event-card';
-
-        const timeDiv = document.createElement('div');
-        timeDiv.className = 'event-time';
-        timeDiv.textContent = `${ev.start} - ${ev.end}`;
-        card.appendChild(timeDiv);
-
-        const titleDiv = document.createElement('div');
-        titleDiv.className = 'event-title';
-        titleDiv.textContent = ev.event;
-        card.appendChild(titleDiv);
-
-        const roomDiv = document.createElement('div');
-        roomDiv.className = 'event-room';
-        roomDiv.textContent = ev.room || '';
-        card.appendChild(roomDiv);
-
-        return card;
-      }
-
-      // Mehrzeilige Task-Karte
-      function createTaskCard(task, isDayTask = false) {
-        const card = document.createElement('div');
-        card.className = 'task-card' + (isDayTask ? ' day' : '');
-
-        const timeDiv = document.createElement('div');
-        timeDiv.className = 'task-time';
-        timeDiv.textContent = task.startTime ? task.startTime : '-';
-        card.appendChild(timeDiv);
-
-        const titleDiv = document.createElement('div');
-        titleDiv.className = 'task-title';
-        titleDiv.textContent = task.titel;
-        card.appendChild(titleDiv);
-
-        const typeDiv = document.createElement('div');
-        typeDiv.className = 'task-type';
-        typeDiv.textContent = task.typ || '';
-        card.appendChild(typeDiv);
-
-        card.title = `${task.titel}\nTyp: ${task.typ}\nStart: ${task.startTime || '-'}\nDauer: ${task.dauer || '-'} min\n${task.beschreibung || ''}`;
-        card.draggable = true;
-        card.dataset.id = task.id;
-
-        card.ondragstart = (ev) => {
-          ev.dataTransfer.setData('text/plain', task.id);
-          setTimeout(() => card.classList.add('dragging'), 0);
-        };
-        card.ondragend = (ev) => {
-          card.classList.remove('dragging');
-        };
-
-        card.addEventListener('click', () => openTaskModal(task));
-
-        return card;
-      }
-
+      // Drag & Drop
       function allowDrop(ev) {
         ev.preventDefault();
       }
-      async function drop(ev, targetDate) {
-        ev.preventDefault();
-        const taskId = ev.dataTransfer.getData('text/plain');
-        const task = tasks.find(t => t.id === taskId);
-        if (!task) return;
-        if (targetDate === null) {
-          task.date = null;
-        } else {
-          task.date = targetDate;
-        }
-        await saveTaskToFirestore(task);
-        await ladeTasks();
+
+      function drag(ev) {
+        ev.dataTransfer.setData("task-id", ev.target.dataset.taskId);
+        ev.target.classList.add('dragging');
       }
 
-      // Aufgabenablage rendern
-      function renderTaskSidebar() {
+      async function drop(ev, dayISO) {
+        ev.preventDefault();
+        const taskId = ev.dataTransfer.getData("task-id");
+        const taskCard = document.querySelector(`#task-list [data-task-id="${taskId}"]`);
+        if (taskCard) taskCard.classList.remove('dragging');
+
+        if (dayISO) {
+          // Aufgabe existiert schon, also verschieben
+          const task = tasks.find(t => t.id === taskId);
+          if (task) {
+            task.date = dayISO;
+            await saveTaskToFirestore(task);
+            ladeTasks();
+          }
+        } else {
+          // Aufgabe zurück in die Taskliste
+          const task = tasks.find(t => t.id === taskId);
+          if (task) {
+            task.date = null;
+            await saveTaskToFirestore(task);
+            ladeTasks();
+          }
+        }
+      }
+
+      // Sidebar: Tasks laden und anzeigen
+      function renderTaskList() {
         taskList.innerHTML = '';
-        const unassigned = getUnassignedTasks();
-        unassigned.forEach(task => {
-          const card = createTaskCard(task, false);
-          taskList.appendChild(card);
+        tasks.filter(task => !task.date).forEach(task => {
+          const taskCard = document.createElement('div');
+          taskCard.className = 'task-card';
+          taskCard.draggable = true;
+          taskCard.dataset.taskId = task.id;
+          taskCard.ondragstart = drag;
+          taskCard.innerHTML = `
+            <div class="task-title">${task.title}</div>
+            <div class="task-type">${task.type}</div>
+          `;
+          taskList.appendChild(taskCard);
         });
       }
 
-      // Modal öffnen zum Hinzufügen oder Bearbeiten
-      function openTaskModal(task = null) {
+      // Modal anzeigen und Aufgabe laden
+      async function openTaskModal(taskId) {
         taskModal.style.display = 'flex';
-        if (task) {
-          document.getElementById('task-id').value = task.id;
-          document.getElementById('modal-task-title').value = task.titel;
-          document.getElementById('modal-task-type').value = task.typ;
-          document.getElementById('modal-task-date').value = task.date || '';
-          document.getElementById('modal-task-start-time').value = task.startTime || '';
-          document.getElementById('modal-task-duration').value = task.dauer || 60;
-          document.getElementById('modal-task-desc').value = task.beschreibung || '';
-          const checkboxes = document.querySelectorAll('#modal-repeat-days input[type=checkbox]');
-          checkboxes.forEach(cb => {
-            cb.checked = task.repeatDays && task.repeatDays.includes(parseInt(cb.value));
-          });
+
+        if (taskId) {
+          // Aufgabe bearbeiten
+          const task = tasks.find(t => t.id === taskId);
+          if (task) {
+            document.getElementById('modal-task-id').value = task.id;
+            document.getElementById('modal-task-title').value = task.title;
+            document.getElementById('modal-task-type').value = task.type;
+            document.getElementById('modal-task-date').value = task.date;
+            document.getElementById('modal-task-start-time').value = task.startTime;
+            document.getElementById('modal-task-duration').value = task.duration;
+            document.getElementById('modal-task-desc').value = task.desc || '';
+            // Checkboxen für Wiederholungstage setzen
+            const repeatDays = task.repeatDays || [];
+            document.querySelectorAll('#modal-repeat-days input[type="checkbox"]').forEach(checkbox => {
+              checkbox.checked = repeatDays.includes(parseInt(checkbox.value));
+            });
+          }
         } else {
-          taskDetailForm.reset();
-          document.getElementById('task-id').value = '';
+          // Neue Aufgabe
+          document.getElementById('modal-task-id').value = '';
+          document.getElementById('modal-task-title').value = '';
+          document.getElementById('modal-task-type').value = 'Lernen';
+          document.getElementById('modal-task-date').value = formatDateISO(new Date());
+          document.getElementById('modal-task-start-time').value = '12:00';
+          document.getElementById('modal-task-duration').value = '60';
+          document.getElementById('modal-task-desc').value = '';
+          // Alle Checkboxen für Wiederholungstage entfernen
+          document.querySelectorAll('#modal-repeat-days input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = false;
+          });
         }
       }
 
-      // Modal schließen
+      // Modal schliessen
       function closeTaskModal() {
         taskModal.style.display = 'none';
       }
 
-      // Modal Formular absenden
-      taskDetailForm.addEventListener('submit', async e => {
+      // Aufgabe speichern
+      async function saveTask(e) {
         e.preventDefault();
-        const id = document.getElementById('task-id').value;
-        const titel = document.getElementById('modal-task-title').value.trim();
-        const typ = document.getElementById('modal-task-type').value;
-        const datum = document.getElementById('modal-task-date').value;
+
+        const taskId = document.getElementById('modal-task-id').value;
+        const title = document.getElementById('modal-task-title').value;
+        const type = document.getElementById('modal-task-type').value;
+        const date = document.getElementById('modal-task-date').value;
         const startTime = document.getElementById('modal-task-start-time').value;
-        const dauer = parseInt(document.getElementById('modal-task-duration').value);
-        const beschreibung = document.getElementById('modal-task-desc').value.trim();
+        const duration = document.getElementById('modal-task-duration').value;
+        const desc = document.getElementById('modal-task-desc').value;
 
-        const repeatDaysCheckboxes = document.querySelectorAll('#modal-repeat-days input[type=checkbox]');
-        const repeatDays = [];
-        repeatDaysCheckboxes.forEach(cb => {
-          if (cb.checked) repeatDays.push(parseInt(cb.value));
-        });
+        // Wiederholungstage sammeln
+        const repeatDays = Array.from(document.querySelectorAll('#modal-repeat-days input[type="checkbox"]:checked"))
+          .map(checkbox => parseInt(checkbox.value));
 
-        if (!titel || !datum || !dauer || !startTime) {
-          alert('Bitte alle Pflichtfelder ausfüllen.');
-          return;
-        }
+        const task = {
+          title,
+          type,
+          date,
+          startTime,
+          duration,
+          desc,
+          repeatDays
+        };
 
-        let task;
-        if (id) {
-          task = tasks.find(t => t.id === id);
-          if (!task) {
-            alert('Aufgabe nicht gefunden.');
-            return;
-          }
-          task.titel = titel;
-          task.typ = typ;
-          task.date = datum;
-          task.startTime = startTime;
-          task.dauer = dauer;
-          task.beschreibung = beschreibung;
-          task.repeatDays = repeatDays;
+        if (taskId) {
+          task.id = taskId;
         } else {
-          task = {
-            titel,
-            typ,
-            date: datum,
-            startTime,
-            dauer,
-            beschreibung,
-            repeatDays
-          };
-          task.id = 'temp_' + Date.now();
-          tasks.push(task);
+          task.id = 'temp_' + Date.now(); // Temp ID bis Firebase ID generiert
         }
 
         await saveTaskToFirestore(task);
-        await ladeTasks();
         closeTaskModal();
-      });
+        ladeTasks();
+      }
 
+      // Event Listener
+      addTaskBtn.addEventListener('click', () => openTaskModal(null));
       closeModalBtn.addEventListener('click', closeTaskModal);
-      taskModal.addEventListener('click', e => {
-        if (e.target === taskModal) closeTaskModal();
-      });
+      taskDetailForm.addEventListener('submit', saveTask);
 
-      addTaskBtn.addEventListener('click', () => openTaskModal());
-
-      // Navigation
       document.getElementById('prev-week').addEventListener('click', () => {
-        currentMonday.setDate(currentMonday.getDate() - 7);
+        currentMonday = addDays(currentMonday, -7);
         renderWeek();
       });
+
       document.getElementById('next-week').addEventListener('click', () => {
-        currentMonday.setDate(currentMonday.getDate() + 7);
+        currentMonday = addDays(currentMonday, 7);
         renderWeek();
       });
     });
   </script>
-
 </body>
 
 </html>
