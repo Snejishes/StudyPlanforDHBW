@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wochenplaner mit Firebase & Mehrzeiliger Darstellung</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f9f9f9;
+      color: #333;
+    }
+
+    header {
+      background: #007acc;
+      color: #fff;
+      padding: 1rem;
+      text-align: center;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    #login-status {
+      font-size: 0.9rem;
+    }
+
+    #logout-btn {
+      background: #005f99;
+      border: none;
+      color: white;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 1rem;
+    }
+
+    main {
+      display: flex;
+      height: calc(100vh - 60px);
+    }
+
+    #sidebar {
+      width: 320px;
+      background: #fff;
+      border-right: 1px solid #ddd;
+      padding: 1rem;
+      box-sizing: border-box;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #sidebar h2 {
+      margin-top: 0;
+    }
+
+    #task-list {
+      min-height: 150px;
+      border: 2px dashed #ccc;
+      border-radius: 6px;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      max-height: 300px;
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+
+    .task-card {
+      background: #007acc;
+      color: #fff;
+      padding: 0.5rem;
+      margin: 0.3rem 0;
+      border-radius: 4px;
+      cursor: grab;
+      white-space: normal;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.2s ease;
+    }
+
+    .task-card.dragging {
+      opacity: 0.5;
+    }
+
+    .task-card:hover {
+      background-color: #005f99;
+    }
+
+    #add-task-btn {
+      background: #007acc;
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-bottom: 1rem;
+    }
+
+    #add-task-btn:hover {
+      background: #005f99;
+    }
+
+    #week-container {
+      flex: 1;
+      padding: 1rem;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #week-nav {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    #week-nav button {
+      background: #007acc;
+      border: none;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      margin: 0 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #week-nav button:hover {
+      background: #005f99;
+    }
+
+    #week-label {
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    #days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
+      flex: 1;
+      overflow-y: visible;
+    }
+
+    .day-tile {
+      background: #fff;
+      border-radius: 8px;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      min-height: 320px;
+      max-height: 320px;
+    }
+
+    .day-header {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    .events,
+    .tasks {
+      flex: 1;
+      overflow-y: visible;
+    }
+
+    .event-card,
+    .task-card.day {
+      background: #d0e7ff;
+      border-left: 4px solid #007acc;
+      margin: 0.3rem 0;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: #003366;
+      cursor: default;
+      white-space: normal;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.2s ease;
+    }
+
+    .task-card.day {
+      background: #90caf9;
+      border-left-color: #1565c0;
+    }
+
+    .event-card:hover,
+    .task-card.day:hover {
+      background-color: #b3d4fc;
+    }
+
+    /* Struktur für mehrzeilige Inhalte */
+    .event-time,
+    .task-time {
+      font-weight: 600;
+      margin-bottom: 0.15rem;
+    }
+
+    .event-title,
+    .task-title {
+      font-weight: 700;
+      margin-bottom: 0.15rem;
+    }
+
+    .event-room,
+    .task-type {
+      font-style: italic;
+      color: #555;
+    }
+
+    #repeat-days label {
+      margin-right: 0.5rem;
+      user-select: none;
+    }
+
+    /* Modal Styles */
+    #task-modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+
+    #task-modal .modal-content {
+      background: white;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      max-width: 400px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-sizing: border-box;
+    }
+
+    #task-modal h3 {
+      margin-top: 0;
+    }
+
+    #task-modal label {
+      display: block;
+      margin-top: 0.5rem;
+    }
+
+    #task-modal input,
+    #task-modal select,
+    #task-modal textarea {
+      width: 100%;
+      padding: 0.3rem;
+      margin-top: 0.2rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    #task-modal button {
+      margin-top: 1rem;
+      background: #007acc;
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #task-modal button:hover {
+      background: #005f99;
+    }
+
+    #task-modal #close-modal {
+      background: #ccc;
+      color: #333;
+      margin-right: 0.5rem;
+    }
+
+    #task-modal #close-modal:hover {
+      background: #999;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Wochenplaner</h1>
+    <div id="login-status">
+      <span id="user-email"></span>
+      <button id="logout-btn" style="display:none;">Logout</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="sidebar" style="display:none;">
+      <h2>Aufgabenablage</h2>
+      <button id="add-task-btn">Aufgabe hinzufügen</button>
+      <div id="task-list" ondragover="allowDrop(event)" ondrop="drop(event, null)"></div>
+    </section>
+
+    <section id="week-container" style="display:none;">
+      <nav id="week-nav">
+        <button id="prev-week">← Vorwoche</button>
+        <div id="week-label"></div>
+        <button id="next-week">Nächste Woche →</button>
+      </nav>
+      <div id="days"></div>
+    </section>
+
+    <section id="login-section" style="padding:1rem; max-width: 320px; margin:auto;">
+      <h2>Login</h2>
+      <form id="login-form">
+        <label for="email">E-Mail</label>
+        <input type="email" id="email" required />
+        <label for="password">Passwort</label>
+        <input type="password" id="password" required />
+        <button type="submit">Anmelden / Registrieren</button>
+      </form>
+      <p id="login-error" style="color:red;"></p>
+    </section>
+  </main>
+
+  <!-- Modal für Aufgaben-Detail -->
+  <div id="task-modal">
+    <div class="modal-content">
+      <h3>Aufgabe hinzufügen / bearbeiten</h3>
+      <form id="task-detail-form">
+        <input type="hidden" id="task-id" />
+        <label for="modal-task-title">Titel</label>
+        <input type="text" id="modal-task-title" required />
+
+        <label for="modal-task-type">Typ</label>
+        <select id="modal-task-type" required>
+          <option value="Lernen">Lernen</option>
+          <option value="Termin">Termin</option>
+          <option value="Vorlesung">Vorlesung</option>
+          <option value="Sonstiges">Sonstiges</option>
+        </select>
+
+        <label for="modal-task-date">Datum</label>
+        <input type="date" id="modal-task-date" required />
+
+        <label for="modal-task-start-time">Startzeit</label>
+        <input type="time" id="modal-task-start-time" required />
+
+        <label for="modal-task-duration">Dauer (Minuten)</label>
+        <input type="number" id="modal-task-duration" min="1" value="60" required />
+
+        <label>Wiederholung an Wochentagen:</label>
+        <div id="modal-repeat-days">
+          <label><input type="checkbox" value="1" /> Mo</label>
+          <label><input type="checkbox" value="2" /> Di</label>
+          <label><input type="checkbox" value="3" /> Mi</label>
+          <label><input type="checkbox" value="4" /> Do</label>
+          <label><input type="checkbox" value="5" /> Fr</label>
+          <label><input type="checkbox" value="6" /> Sa</label>
+          <label><input type="checkbox" value="0" /> So</label>
+        </div>
+
+        <label for="modal-task-desc">Beschreibung</label>
+        <textarea id="modal-task-desc" rows="3"></textarea>
+
+        <button type="submit">Speichern</button>
+        <button type="button" id="close-modal">Abbrechen</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Firebase konfigurieren (deine Daten)
+      const firebaseConfig = {
+        apiKey: "AIzaSyBfZ8zAToQ7tQq1NtLddNf5IfBQe2GkoL8",
+        authDomain: "planner-tmt.firebaseapp.com",
+        projectId: "planner-tmt",
+        storageBucket: "planner-tmt.firebasestorage.app",
+        messagingSenderId: "303579387432",
+        appId: "1:303579387432:web:d7e2e5ddf9075e4d3d071d"
+      };
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
+      // UI Elemente
+      const loginSection = document.getElementById('login-section');
+      const loginForm = document.getElementById('login-form');
+      const loginError = document.getElementById('login-error');
+      const sidebar = document.getElementById('sidebar');
+      const weekContainer = document.getElementById('week-container');
+      const userEmailSpan = document.getElementById('user-email');
+      const logoutBtn = document.getElementById('logout-btn');
+      const addTaskBtn = document.getElementById('add-task-btn');
+
+      const taskModal = document.getElementById('task-modal');
+      const taskDetailForm = document.getElementById('task-detail-form');
+      const closeModalBtn = document.getElementById('close-modal');
+
+      const daysContainer = document.getElementById('days');
+      const taskList = document.getElementById('task-list');
+      const weekLabel = document.getElementById('week-label');
+
+      // Planer Variablen
+      let vorlesungenJSON = [];
+      let currentMonday = null;
+      let tasks = [];
+      let currentUser = null;
+
+      // Hilfsfunktionen
+      function getMonday(d) {
+        d = new Date(d);
+        let day = d.getDay();
+        let diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(d.setDate(diff));
+      }
+      function addDays(date, days) {
+        let copy = new Date(date);
+        copy.setDate(copy.getDate() + days);
+        return copy;
+      }
+      function formatDateISO(d) {
+        return d.toISOString().split('T')[0];
+      }
+      function formatDayName(d) {
+        return d.toLocaleDateString('de-DE', {weekday: 'short', day: 'numeric', month: 'numeric'});
+      }
+
+      // Firebase Auth State
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          currentUser = user;
+          userEmailSpan.textContent = user.email;
+          logoutBtn.style.display = 'inline-block';
+          loginSection.style.display = 'none';
+          sidebar.style.display = 'flex';
+          weekContainer.style.display = 'flex';
+          currentMonday = getMonday(new Date());
+          ladeVorlesungen();
+          ladeTasks();
+        } else {
+          currentUser = null;
+          userEmailSpan.textContent = '';
+          logoutBtn.style.display = 'none';
+          loginSection.style.display = 'block';
+          sidebar.style.display = 'none';
+          weekContainer.style.display = 'none';
+          tasks = [];
+          renderWeek();
+        }
+      });
+
+      // Login / Registrierung
+      loginForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        loginError.textContent = '';
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        try {
+          await auth.signInWithEmailAndPassword(email, password);
+        } catch (err) {
+          if (err.code === 'auth/user-not-found') {
+            try {
+              await auth.createUserWithEmailAndPassword(email, password);
+            } catch (regErr) {
+              loginError.textContent = regErr.message;
+            }
+          } else {
+            loginError.textContent = err.message;
+          }
+        }
+      });
+
+      logoutBtn.addEventListener('click', () => {
+        auth.signOut();
+      });
+
+      // Vorlesungen laden (lokal oder aus JSON)
+      async function ladeVorlesungen() {
+        try {
+          const response = await fetch('./vorlesungen.json');
+          if (!response.ok) throw new Error('Fehler beim Laden der JSON-Datei');
+          vorlesungenJSON = await response.json();
+          renderWeek();
+        } catch (error) {
+          console.error('Ladefehler:', error);
+          vorlesungenJSON = [];
+          renderWeek();
+        }
+      }
+
+      // Tasks aus Firestore laden
+      async function ladeTasks() {
+        if (!currentUser) return;
+        try {
+          const snapshot = await db.collection('users').doc(currentUser.uid).collection('tasks').get();
+          tasks = snapshot.docs.map(doc => {
+            const data = doc.data();
+            data.id = doc.id;
+            if (!data.repeatDays) data.repeatDays = [];
+            return data;
+          });
+          renderWeek();
+        } catch (e) {
+          console.error('Fehler beim Laden der Aufgaben:', e);
+        }
+      }
+
+      // Task in Firestore speichern (neu oder update)
+      async function saveTaskToFirestore(task) {
+        if (!currentUser) return;
+        try {
+          if (task.id && !task.id.startsWith('temp_')) {
+            await db.collection('users').doc(currentUser.uid).collection('tasks').doc(task.id).set(task);
+          } else {
+            const docRef = await db.collection('users').doc(currentUser.uid).collection('tasks').add(task);
+            task.id = docRef.id;
+          }
+        } catch (e) {
+          console.error('Fehler beim Speichern der Aufgabe:', e);
+        }
+      }
+
+      // Render Woche
+      function renderWeek() {
+        daysContainer.innerHTML = '';
+        if (!currentMonday) return;
+        weekLabel.textContent = `Woche vom ${formatDayName(currentMonday)}`;
+
+        for (let i = 0; i < 7; i++) {
+          const dayDate = addDays(currentMonday, i);
+          const dayISO = formatDateISO(dayDate);
+
+          const dayTile = document.createElement('div');
+          dayTile.className = 'day-tile';
+          dayTile.dataset.date = dayISO;
+          dayTile.ondragover = allowDrop;
+          dayTile.ondrop = (ev) => drop(ev, dayISO);
+
+          const dayHeader = document.createElement('div');
+          dayHeader.className = 'day-header';
+          dayHeader.textContent = formatDayName(dayDate);
+          dayTile.appendChild(dayHeader);
+
+          // Vorlesungen anzeigen
+          const eventsDiv = document.createElement('div');
+          eventsDiv.className = 'events';
+          const events = getVorlesungenForDate(dayDate);
+          events.forEach(ev => {
+            const evCard = createEventCard(ev);
+            eventsDiv.appendChild(evCard);
+          });
+          dayTile.appendChild(eventsDiv);
+
+          // Aufgaben anzeigen, sortiert nach Startzeit
+          const tasksDiv = document.createElement('div');
+          tasksDiv.className = 'tasks';
+          const dayTasks = getTasksForDate(dayISO).sort((a, b) => {
+            if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
+            if (a.startTime) return -1;
+            if (b.startTime) return 1;
+            return 0;
+          });
+          dayTasks.forEach(task => {
+            const taskCard = createTaskCard(task, true);
+            tasksDiv.appendChild(taskCard);
+          });
+          dayTile.appendChild(tasksDiv);
+
+          daysContainer.appendChild(dayTile);
+        }
+        renderTaskSidebar();
+      }
+
+      function getVorlesungenForDate(date) {
+        const weekday = date.toLocaleDateString('de-DE', {weekday: 'short'});
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const formatted = `${weekday}, ${day}.${month}.`;
+        return vorlesungenJSON.filter(v => v.date === formatted);
+      }
+
+      function getTasksForDate(dateISO) {
+        const d = new Date(dateISO);
+        return tasks.filter(task => {
+          if (task.repeatDays && task.repeatDays.length > 0) {
+            return task.repeatDays.includes(d.getDay());
+          }
+          return task.date === dateISO;
+        });
+      }
+
+      function getUnassignedTasks() {
+        return tasks.filter(t => !t.date);
+      }
+
+      // Mehrzeilige Event-Karte
+      function createEventCard(ev) {
+        const card = document.createElement('div');
+        card.className = 'event-card';
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'event-time';
+        timeDiv.textContent = `${ev.start} - ${ev.end}`;
+        card.appendChild(timeDiv);
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'event-title';
+        titleDiv.textContent = ev.event;
+        card.appendChild(titleDiv);
+
+        const roomDiv = document.createElement('div');
+        roomDiv.className = 'event-room';
+        roomDiv.textContent = ev.room || '';
+        card.appendChild(roomDiv);
+
+        return card;
+      }
+
+      // Mehrzeilige Task-Karte
+      function createTaskCard(task, isDayTask = false) {
+        const card = document.createElement('div');
+        card.className = 'task-card' + (isDayTask ? ' day' : '');
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'task-time';
+        timeDiv.textContent = task.startTime ? task.startTime : '-';
+        card.appendChild(timeDiv);
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'task-title';
+        titleDiv.textContent = task.titel;
+        card.appendChild(titleDiv);
+
+        const typeDiv = document.createElement('div');
+        typeDiv.className = 'task-type';
+        typeDiv.textContent = task.typ || '';
+        card.appendChild(typeDiv);
+
+        card.title = `${task.titel}\nTyp: ${task.typ}\nStart: ${task.startTime || '-'}\nDauer: ${task.dauer || '-'} min\n${task.beschreibung || ''}`;
+        card.draggable = true;
+        card.dataset.id = task.id;
+
+        card.ondragstart = (ev) => {
+          ev.dataTransfer.setData('text/plain', task.id);
+          setTimeout(() => card.classList.add('dragging'), 0);
+        };
+        card.ondragend = (ev) => {
+          card.classList.remove('dragging');
+        };
+
+        card.addEventListener('click', () => openTaskModal(task));
+
+        return card;
+      }
+
+      function allowDrop(ev) {
+        ev.preventDefault();
+      }
+      async function drop(ev, targetDate) {
+        ev.preventDefault();
+        const taskId = ev.dataTransfer.getData('text/plain');
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+        if (targetDate === null) {
+          task.date = null;
+        } else {
+          task.date = targetDate;
+        }
+        await saveTaskToFirestore(task);
+        await ladeTasks();
+      }
+
+      // Aufgabenablage rendern
+      function renderTaskSidebar() {
+        taskList.innerHTML = '';
+        const unassigned = getUnassignedTasks();
+        unassigned.forEach(task => {
+          const card = createTaskCard(task, false);
+          taskList.appendChild(card);
+        });
+      }
+
+      // Modal öffnen zum Hinzufügen oder Bearbeiten
+      function openTaskModal(task = null) {
+        taskModal.style.display = 'flex';
+        if (task) {
+          document.getElementById('task-id').value = task.id;
+          document.getElementById('modal-task-title').value = task.titel;
+          document.getElementById('modal-task-type').value = task.typ;
+          document.getElementById('modal-task-date').value = task.date || '';
+          document.getElementById('modal-task-start-time').value = task.startTime || '';
+          document.getElementById('modal-task-duration').value = task.dauer || 60;
+          document.getElementById('modal-task-desc').value = task.beschreibung || '';
+          const checkboxes = document.querySelectorAll('#modal-repeat-days input[type=checkbox]');
+          checkboxes.forEach(cb => {
+            cb.checked = task.repeatDays && task.repeatDays.includes(parseInt(cb.value));
+          });
+        } else {
+          taskDetailForm.reset();
+          document.getElementById('task-id').value = '';
+        }
+      }
+
+      // Modal schließen
+      function closeTaskModal() {
+        taskModal.style.display = 'none';
+      }
+
+      // Modal Formular absenden
+      taskDetailForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const id = document.getElementById('task-id').value;
+        const titel = document.getElementById('modal-task-title').value.trim();
+        const typ = document.getElementById('modal-task-type').value;
+        const datum = document.getElementById('modal-task-date').value;
+        const startTime = document.getElementById('modal-task-start-time').value;
+        const dauer = parseInt(document.getElementById('modal-task-duration').value);
+        const beschreibung = document.getElementById('modal-task-desc').value.trim();
+
+        const repeatDaysCheckboxes = document.querySelectorAll('#modal-repeat-days input[type=checkbox]');
+        const repeatDays = [];
+        repeatDaysCheckboxes.forEach(cb => {
+          if (cb.checked) repeatDays.push(parseInt(cb.value));
+        });
+
+        if (!titel || !datum || !dauer || !startTime) {
+          alert('Bitte alle Pflichtfelder ausfüllen.');
+          return;
+        }
+
+        let task;
+        if (id) {
+          task = tasks.find(t => t.id === id);
+          if (!task) {
+            alert('Aufgabe nicht gefunden.');
+            return;
+          }
+          task.titel = titel;
+          task.typ = typ;
+          task.date = datum;
+          task.startTime = startTime;
+          task.dauer = dauer;
+          task.beschreibung = beschreibung;
+          task.repeatDays = repeatDays;
+        } else {
+          task = {
+            titel,
+            typ,
+            date: datum,
+            startTime,
+            dauer,
+            beschreibung,
+            repeatDays
+          };
+          task.id = 'temp_' + Date.now();
+          tasks.push(task);
+        }
+
+        await saveTaskToFirestore(task);
+        await ladeTasks();
+        closeTaskModal();
+      });
+
+      closeModalBtn.addEventListener('click', closeTaskModal);
+      taskModal.addEventListener('click', e => {
+        if (e.target === taskModal) closeTaskModal();
+      });
+
+      addTaskBtn.addEventListener('click', () => openTaskModal());
+
+      // Navigation
+      document.getElementById('prev-week').addEventListener('click', () => {
+        currentMonday.setDate(currentMonday.getDate() - 7);
+        renderWeek();
+      });
+      document.getElementById('next-week').addEventListener('click', () => {
+        currentMonday.setDate(currentMonday.getDate() + 7);
+        renderWeek();
+      });
+    });
+  </script>
+
+</body>
+
+</html>
