@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DHBW Wochenplanner-lgtim</title>
+  <title>DHBW TMT24 Vorlesungen</title>
   <style>
     /* Allgemeine Stile */
     body {
@@ -318,6 +318,7 @@
         transform: translateX(-100%);
         opacity: 0;
       }
+
       to {
         transform: translateX(0);
         opacity: 1;
@@ -328,6 +329,7 @@
       from {
         opacity: 0;
       }
+
       to {
         opacity: 1;
       }
@@ -338,6 +340,7 @@
         transform: scale(0.8);
         opacity: 0;
       }
+
       to {
         transform: scale(1);
         opacity: 1;
@@ -350,19 +353,23 @@
         flex-direction: column;
         height: auto;
       }
+
       #sidebar,
       #week-container {
         width: 100%;
         display: block;
       }
+
       /* Optional: Reihenfolge anpassen – Wochenansicht zuerst, Ablage danach */
       #week-container {
         order: 1;
       }
+
       #sidebar {
         order: 2;
         margin-top: 1rem;
       }
+
       /* Day-Tiles in der Wochenansicht in einer flexiblen Grid-Anordnung */
       #days {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -401,10 +408,10 @@
     <section id="login-section" style="padding:1rem; max-width: 320px; margin:auto;">
       <h2>Login</h2>
       <p style="color: #cc0000; font-size: 0.9rem; margin-bottom: 1rem;">
-  ⚠️ Diese Seite ist ein privater Test und derzeit nicht zur Nutzung freigegeben.<br>
-  Bitte registriere dich nicht.<br>
-  Bei Fragen: <a href="mailto:timfischer12828@gmail.com">timfischer12828@gmail.com</a>
-</p>
+        ⚠️ Diese Seite ist ein privater Test und derzeit nicht zur Nutzung freigegeben.<br>
+        Bitte registriere dich nicht.<br>
+        Bei Fragen: <a href="mailto:timfischer12828@gmail.com">timfischer12828@gmail.com</a>
+      </p>
       <form id="login-form">
         <label for="email">E-Mail</label>
         <input type="email" id="email" required />
@@ -523,7 +530,7 @@
         return d.toISOString().split('T')[0];
       }
       function formatDayName(d) {
-        return d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' });
+        return d.toLocaleDateString('de-DE', {weekday: 'short', day: 'numeric', month: 'numeric'});
       }
 
       // Firebase Auth State
@@ -550,7 +557,7 @@
         }
       });
 
-      // Login / Registrierung
+      // Login / Registrierung (Ansatz: zuerst Login versuchen, bei "user-not-found" registrieren)
       loginForm.addEventListener('submit', async e => {
         e.preventDefault();
         loginError.textContent = '';
@@ -563,12 +570,24 @@
         }
 
         try {
-          const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-          await userCredential.user.sendEmailVerification();
-          alert("Registrierung erfolgreich! Bitte bestätige deine E-Mail.");
+          // Zuerst Login-Versuch
+          const userCredential = await auth.signInWithEmailAndPassword(email, password);
+          console.log("Login erfolgreich:", userCredential);
         } catch (error) {
-          console.error("Fehler bei der Registrierung:", error);
-          loginError.textContent = "Fehler: " + error.message;
+          if (error.code === 'auth/user-not-found') {
+            // Wenn Nutzer nicht existiert: Registrierung versuchen
+            try {
+              const newUserCredential = await auth.createUserWithEmailAndPassword(email, password);
+              await newUserCredential.user.sendEmailVerification();
+              alert("Registrierung erfolgreich! Bitte bestätige deine E-Mail.");
+            } catch (regError) {
+              console.error("Fehler bei der Registrierung:", regError);
+              loginError.textContent = "Registrierungsfehler: " + regError.message;
+            }
+          } else {
+            console.error("Login-Fehler:", error);
+            loginError.textContent = "Login-Fehler: " + error.message;
+          }
         }
       });
 
@@ -691,7 +710,7 @@
       }
 
       function getVorlesungenForDate(date) {
-        const weekday = date.toLocaleDateString('de-DE', { weekday: 'short' });
+        const weekday = date.toLocaleDateString('de-DE', {weekday: 'short'});
         const day = date.getDate().toString().padStart(2, '0');
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const formatted = `${weekday}, ${day}.${month}.`;
@@ -769,7 +788,7 @@
         deleteBtn.className = 'delete-task-btn';
         deleteBtn.title = "Aufgabe löschen";
         deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation(); // Verhindert Öffnen des Modalfensters
+          e.stopPropagation();
           if (confirm('Aufgabe wirklich löschen?')) {
             deleteTask(task.id);
           }
@@ -803,7 +822,6 @@
         const task = tasks.find(t => t.id === taskId);
         if (!task) return;
         if (targetDate === null) {
-          // Ablage: Datum entfernen, damit die Aufgabe unzugeordnet wird
           task.date = null;
         } else {
           task.date = targetDate;
