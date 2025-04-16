@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wochenplaner von Tim, Noah, Elias</title>
+  <title>Wochenplaner mit Firebase & Mehrzeiliger Darstellung</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -471,24 +471,22 @@
         loginError.textContent = '';
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
+
+        if (!email || !password) {
+          loginError.textContent = "Bitte E-Mail und Passwort eingeben.";
+          return;
+        }
+
         try {
-          await auth.signInWithEmailAndPassword(email, password);
-        } catch (err) {
-          if (err.code === 'auth/user-not-found') {
-            try {
-              await auth.createUserWithEmailAndPassword(email, password);
-            } catch (regErr) {
-              loginError.textContent = regErr.message;
-            }
-          } else {
-            loginError.textContent = err.message;
-          }
+          const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+          await userCredential.user.sendEmailVerification();
+          alert("Registrierung erfolgreich! Bitte bestätige deine E-Mail.");
+        } catch (error) {
+          console.error("Fehler bei der Registrierung:", error);
+          loginError.textContent = "Fehler: " + error.message;
         }
       });
 
-      logoutBtn.addEventListener('click', () => {
-        auth.signOut();
-      });
 
       // Vorlesungen laden (lokal oder aus JSON)
       async function ladeVorlesungen() {
