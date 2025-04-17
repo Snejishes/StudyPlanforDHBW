@@ -318,7 +318,6 @@
         transform: translateX(-100%);
         opacity: 0;
       }
-
       to {
         transform: translateX(0);
         opacity: 1;
@@ -329,7 +328,6 @@
       from {
         opacity: 0;
       }
-
       to {
         opacity: 1;
       }
@@ -340,7 +338,6 @@
         transform: scale(0.8);
         opacity: 0;
       }
-
       to {
         transform: scale(1);
         opacity: 1;
@@ -353,23 +350,19 @@
         flex-direction: column;
         height: auto;
       }
-
       #sidebar,
       #week-container {
         width: 100%;
         display: block;
       }
-
       /* Optional: Reihenfolge anpassen – Wochenansicht zuerst, Ablage danach */
       #week-container {
         order: 1;
       }
-
       #sidebar {
         order: 2;
         margin-top: 1rem;
       }
-
       /* Day-Tiles in der Wochenansicht in einer flexiblen Grid-Anordnung */
       #days {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -530,7 +523,7 @@
         return d.toISOString().split('T')[0];
       }
       function formatDayName(d) {
-        return d.toLocaleDateString('de-DE', {weekday: 'short', day: 'numeric', month: 'numeric'});
+        return d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' });
       }
 
       // Firebase Auth State
@@ -710,7 +703,7 @@
       }
 
       function getVorlesungenForDate(date) {
-        const weekday = date.toLocaleDateString('de-DE', {weekday: 'short'});
+        const weekday = date.toLocaleDateString('de-DE', { weekday: 'short' });
         const day = date.getDate().toString().padStart(2, '0');
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const formatted = `${weekday}, ${day}.${month}.`;
